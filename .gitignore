@@ -1,0 +1,19 @@
+# Build / exe
+build/
+dist/
+*.exe
+*.spec
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs / local
+*.log
+nova/
+Icon/Ekran*.png
+Icon/Ekran*.jpg
+.venv/
+venv/
+.env
+.DS_Store
+Thumbs.db
