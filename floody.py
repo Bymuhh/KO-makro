@@ -182,18 +182,8 @@ class FloodyPage(tk.Frame):
         self._build()
 
     def _build(self):
-        top = tk.Frame(self, bg=BG)
-        top.pack(fill="x", padx=12, pady=(8, 4))
-        tk.Button(
-            top, text="← Makro", command=self._geri,
-            bg=BG2, fg=CYAN, activebackground=BG3, activeforeground=CYAN,
-            relief="flat", font=("Arial", 8), cursor="hand2", width=10
-        ).pack(side="left")
-        tk.Label(top, text="Floody", bg=BG, fg=WHITE,
-                 font=("Arial", 14, "bold")).pack(side="left", padx=10)
-
         body = tk.Frame(self, bg=BG)
-        body.pack(fill="both", expand=True, padx=10, pady=4)
+        body.pack(fill="both", expand=True, padx=8, pady=(6, 2))
         body.columnconfigure(0, weight=3)
         body.columnconfigure(1, weight=2)
         body.rowconfigure(0, weight=1)
@@ -202,7 +192,7 @@ class FloodyPage(tk.Frame):
             body, text="  Gönderilecek Mesajlar  ",
             bg=CARD, fg=WHITE, font=("Arial", 9, "bold"),
             bd=1, relief="solid", labelanchor="nw")
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
 
         self._entries = []
         for i in range(4):
@@ -211,8 +201,8 @@ class FloodyPage(tk.Frame):
                 relief="flat", font=("Arial", 9),
                 highlightthickness=1, highlightbackground=MUTED,
                 highlightcolor=CYAN)
-            e.pack(fill="x", padx=10,
-                   pady=(8 if i == 0 else 4, 4 if i < 3 else 10), ipady=6)
+            e.pack(fill="x", padx=8,
+                   pady=(6 if i == 0 else 3, 3 if i < 3 else 8), ipady=4)
             e._ph = "%d. Mesajı buraya yazın..." % (i + 1)
             self._set_placeholder(e)
             self._entries.append(e)

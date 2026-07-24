@@ -871,14 +871,14 @@ def lbl(p, t, col=CYAN, fnt=("Arial", 9), **kw):
     return tk.Label(p, text=t, bg=p["bg"], fg=col, font=fnt, **kw)
 
 def sep(p):
-    tk.Frame(p, bg=CDIM, height=1).pack(fill="x", padx=10, pady=4)
+    tk.Frame(p, bg=CDIM, height=1).pack(fill="x", padx=8, pady=2)
 
 # ══════════════════════════════════════════════
 #  ANA PENCERE
 # ══════════════════════════════════════════════
 class App:
-    ANA_GEOM = "720x820"
-    FLOODY_GEOM = "720x820"  # makro ile aynı — geçişte boyut değişmesin
+    ANA_GEOM = "600x620"
+    FLOODY_GEOM = "600x620"  # makro ile aynı — geçişte boyut değişmesin
     MINI_GEOM = "128x36"   # yaklasik 3cm x 1cm (tutamak + tuslar)
 
     def __init__(self):
@@ -1092,20 +1092,50 @@ class App:
     # ── Üst bar ────────────────────────────────
     def _build_topbar(self):
         f = tk.Frame(self._ana, bg=BG)
-        f.pack(fill="x", padx=12, pady=(10, 4))
+        f.pack(fill="x", padx=10, pady=(6, 2))
+
+        # Sol: Makro / Floody sekmeleri
+        tabs = tk.Frame(f, bg=BG)
+        tabs.pack(side="left")
+        self._btn_tab_makro = tk.Button(
+            tabs, text="Makro", command=self._sayfa_makro,
+            bg=CYAN, fg=BG, activebackground=CYAN, activeforeground=BG,
+            relief="flat", bd=0, font=("Arial", 9, "bold"),
+            width=10, cursor="hand2", padx=4, pady=2)
+        self._btn_tab_makro.pack(side="left", padx=(0, 2))
+        self._btn_tab_floody = tk.Button(
+            tabs, text="Floody", command=self._sayfa_floody,
+            bg=BG2, fg=GRAY, activebackground=BG3, activeforeground=WHITE,
+            relief="flat", bd=0, font=("Arial", 9, "bold"),
+            width=10, cursor="hand2", padx=4, pady=2)
+        self._btn_tab_floody.pack(side="left")
+
+        # Sağ: Üstte switch en sağda
         self._v_ustte = tk.BooleanVar(value=True)
-        Toggle(f, self._v_ustte,
-               cmd=lambda: self.win.attributes("-topmost", self._v_ustte.get())).pack(side="left")
-        lbl(f, " Üstte", col=WHITE).pack(side="left", padx=(4, 8))
-        btn(f, "🎮 KO Pencere Seç", self._pencere_sec, col=YELLOW, w=16).pack(side="left", padx=4)
-        self._btn_floody = btn(f, "💬 Floody", self._floody_ac, col=CYAN, w=10)
-        self._btn_floody.pack(side="left", padx=4)
-        self._lbl_pencere = lbl(f, "Pencere: Seçilmedi", col=RED, fnt=("Arial", 7))
-        self._lbl_pencere.pack(side="left", padx=4)
+        sag = tk.Frame(f, bg=BG)
+        sag.pack(side="right")
+        Toggle(sag, self._v_ustte,
+               cmd=lambda: self.win.attributes("-topmost", self._v_ustte.get())).pack(side="right")
+        lbl(sag, "Üstte ", col=WHITE).pack(side="right", padx=(0, 4))
+
+        # Sağ (switch'in solu): KO pencere seç
+        pencere_f = tk.Frame(f, bg=BG)
+        pencere_f.pack(side="right", padx=(0, 10))
+        btn(pencere_f, "KO Pencere Seç", self._pencere_sec, col=YELLOW, w=14).pack(side="right")
+        self._lbl_pencere = lbl(pencere_f, "Seçilmedi", col=RED, fnt=("Arial", 7))
+        self._lbl_pencere.pack(side="right", padx=(0, 6))
         if _ko_hwnd:
             buf = ctypes.create_unicode_buffer(256)
             ctypes.windll.user32.GetWindowTextW(_ko_hwnd, buf, 256)
             self._lbl_pencere.config(text=f"✓ {buf.value[:20]}", fg=GREEN)
+
+    def _sekme_stil(self):
+        if self._sayfa == "floody":
+            self._btn_tab_makro.config(bg=BG2, fg=GRAY)
+            self._btn_tab_floody.config(bg=CYAN, fg=BG)
+        else:
+            self._btn_tab_makro.config(bg=CYAN, fg=BG)
+            self._btn_tab_floody.config(bg=BG2, fg=GRAY)
 
     def _floody_ac(self):
         if self._sayfa == "floody":
@@ -1115,6 +1145,8 @@ class App:
 
     def _sayfa_floody(self):
         if self._mini_mod:
+            return
+        if self._sayfa == "floody":
             return
         try:
             from floody import FloodyPage
@@ -1129,9 +1161,12 @@ class App:
         self._floody_page.on_show()
         self._sayfa = "floody"
         self.win.title("Auto Key — Floody")
-        self._btn_floody.config(text="← Makro", fg=YELLOW)
+        self._sekme_stil()
 
     def _sayfa_makro(self):
+        if self._sayfa == "makro" and self._makro_page.winfo_ismapped():
+            self._sekme_stil()
+            return
         if self._floody_page is not None:
             try:
                 self._floody_page.on_hide()
@@ -1141,15 +1176,12 @@ class App:
         self._makro_page.pack(fill="both", expand=True)
         self._sayfa = "makro"
         self.win.title("Auto Key")
-        try:
-            self._btn_floody.config(text="💬 Floody", fg=CYAN)
-        except tk.TclError:
-            pass
+        self._sekme_stil()
 
     # ── Satırlar ───────────────────────────────
     def _build_satirlar(self, parent=None):
         f = tk.Frame(parent or self._ana, bg=BG)
-        f.pack(fill="x", padx=10, pady=2)
+        f.pack(fill="x", padx=8, pady=1)
 
         # HP kart (kırmızı) — görseldeki gibi üstte
         self._v_hp = tk.BooleanVar(value=False)
@@ -1230,43 +1262,43 @@ class App:
         card = tk.LabelFrame(
             parent, text=f"  {title}  ", bg=BG2, fg=accent,
             font=("Arial", 9, "bold"), bd=1, relief="solid", labelanchor="nw")
-        card.pack(fill="x", pady=(4, 6), padx=2)
+        card.pack(fill="x", pady=(2, 4), padx=1)
 
         # satır 1: switch + bölge + coords + %
         r1 = tk.Frame(card, bg=BG2)
-        r1.pack(fill="x", padx=8, pady=(6, 2))
+        r1.pack(fill="x", padx=6, pady=(4, 1))
         Toggle(r1, var, cmd=toggle_cmd).pack(side="left")
-        lbl(r1, " Aktif", col=WHITE, fnt=("Arial", 8)).pack(side="left", padx=(2, 8))
+        lbl(r1, " Aktif", col=WHITE, fnt=("Arial", 8)).pack(side="left", padx=(2, 6))
         btn_bolge = tk.Button(
             r1, text="📍 Bölge Seç", command=bolge_cmd,
             bg=accent, fg=WHITE, activebackground=accent, activeforeground=WHITE,
-            relief="flat", font=("Arial", 8, "bold"), cursor="hand2", padx=8)
+            relief="flat", font=("Arial", 8, "bold"), cursor="hand2", padx=6)
         btn_bolge.pack(side="left")
         lbl_coords = lbl(r1, "Bölge seçilmedi", col=GRAY, fnt=("Arial", 7))
-        lbl_coords.pack(side="left", padx=8)
-        lbl_pct = lbl(r1, "—", col=pct_col, fnt=("Arial", 14, "bold"))
+        lbl_coords.pack(side="left", padx=6)
+        lbl_pct = lbl(r1, "—", col=pct_col, fnt=("Arial", 12, "bold"))
         lbl_pct.pack(side="right")
 
         # satır 2: progress bar
         bar_frame = tk.Frame(card, bg=BG2)
-        bar_frame.pack(fill="x", padx=8, pady=(2, 4))
-        bar = tk.Canvas(bar_frame, height=14, bg="#1a1a28", highlightthickness=0)
+        bar_frame.pack(fill="x", padx=6, pady=(1, 2))
+        bar = tk.Canvas(bar_frame, height=11, bg="#1a1a28", highlightthickness=0)
         bar.pack(fill="x")
-        bar_bg = bar.create_rectangle(0, 0, 10, 14, fill="#2a2a3a", outline="")
-        bar_fill = bar.create_rectangle(0, 0, 0, 14, fill=accent, outline="")
+        bar_bg = bar.create_rectangle(0, 0, 10, 11, fill="#2a2a3a", outline="")
+        bar_fill = bar.create_rectangle(0, 0, 0, 11, fill=accent, outline="")
 
         def _bar_resize(_e=None):
             w = max(bar.winfo_width(), 10)
-            bar.coords(bar_bg, 0, 0, w, 14)
+            bar.coords(bar_bg, 0, 0, w, 11)
             pct = getattr(bar, "_pct", 0.0)
-            bar.coords(bar_fill, 0, 0, int(w * pct / 100.0), 14)
+            bar.coords(bar_fill, 0, 0, int(w * pct / 100.0), 11)
 
         bar.bind("<Configure>", _bar_resize)
         bar._pct = 0.0
 
         # satır 3: eşik preset + manuel
         r3 = tk.Frame(card, bg=BG2)
-        r3.pack(fill="x", padx=8, pady=2)
+        r3.pack(fill="x", padx=6, pady=1)
         lbl(r3, "Eşik:", col=GRAY, fnt=("Arial", 8)).pack(side="left")
         esik_var = tk.StringVar(value=str(int(esik)))
         for p in (25, 50, 75, 100):
@@ -1275,8 +1307,8 @@ class App:
                 bg=BG3, fg=WHITE, relief="flat", font=("Arial", 8),
                 cursor="hand2",
                 command=lambda v=p, ev=esik_var: ev.set(str(v))
-            ).pack(side="left", padx=2)
-        lbl(r3, "veya:", col=GRAY, fnt=("Arial", 8)).pack(side="left", padx=(8, 2))
+            ).pack(side="left", padx=1)
+        lbl(r3, "veya:", col=GRAY, fnt=("Arial", 8)).pack(side="left", padx=(6, 2))
         ent_esik = tk.Entry(
             r3, textvariable=esik_var, width=4, bg=BG3, fg=WHITE,
             insertbackground=WHITE, relief="flat", font=("Arial", 9), justify="center")
@@ -1285,19 +1317,19 @@ class App:
 
         # satır 4: tuş + bekleme + kaydet
         r4 = tk.Frame(card, bg=BG2)
-        r4.pack(fill="x", padx=8, pady=(2, 8))
+        r4.pack(fill="x", padx=6, pady=(1, 5))
         lbl(r4, "Tuş:", col=GRAY, fnt=("Arial", 8)).pack(side="left")
         tus_var = tk.StringVar(value=str(tus))
         ent_tus = tk.Entry(
             r4, textvariable=tus_var, width=3, bg=BG3, fg=WHITE,
             insertbackground=WHITE, relief="flat", font=("Arial", 9), justify="center")
-        ent_tus.pack(side="left", padx=(2, 10))
+        ent_tus.pack(side="left", padx=(2, 8))
         lbl(r4, "Bekleme (ms):", col=GRAY, fnt=("Arial", 8)).pack(side="left")
         bekle_var = tk.StringVar(value=str(int(bekle)))
         ent_bekle = tk.Entry(
             r4, textvariable=bekle_var, width=5, bg=BG3, fg=WHITE,
             insertbackground=WHITE, relief="flat", font=("Arial", 9), justify="center")
-        ent_bekle.pack(side="left", padx=(2, 10))
+        ent_bekle.pack(side="left", padx=(2, 8))
 
         def kaydet(_kind=kind, _ev=esik_var, _tv=tus_var, _bv=bekle_var):
             self._pot_kaydet(_kind, _ev, _tv, _bv)
@@ -1305,7 +1337,7 @@ class App:
         btn_kaydet = tk.Button(
             r4, text="💾 Kaydet", command=kaydet,
             bg=BG3, fg=WHITE, relief="flat", font=("Arial", 8, "bold"),
-            cursor="hand2", padx=8)
+            cursor="hand2", padx=6)
         btn_kaydet.pack(side="right")
 
         return {
@@ -1410,88 +1442,22 @@ class App:
 
     def _build_status(self, parent=None):
         sf = tk.Frame(parent or self._ana, bg=BG3)
-        sf.pack(fill="x", padx=10, pady=(0, 10))
-        lbl(sf, "Durum ozeti (ana satirdaki anahtarlardan kontrol edilir)",
-            col=GRAY, fnt=("Arial", 7, "italic")).pack(anchor="w", padx=8, pady=(6, 2))
-
-        r1 = tk.Frame(sf, bg=BG3)
-        r1.pack(fill="x", padx=8, pady=1)
-        lbl(r1, "Oto MP  ", fnt=("Arial", 8)).pack(side="left")
-        self._lbl_mp_durum = lbl(r1, "Kapali", col=GRAY, fnt=("Arial", 8, "bold"))
-        self._lbl_mp_durum.pack(side="left", padx=4)
-        self._durum_bagla(self._v_mp, self._lbl_mp_durum, "● Acik", "Kapali")
-        self._lbl_mp_tus = lbl(r1, f"Tuş: {mana_tus.upper()}", fnt=("Arial", 8))
-        self._lbl_mp_tus.pack(side="right")
-
-        r_hp = tk.Frame(sf, bg=BG3)
-        r_hp.pack(fill="x", padx=8, pady=1)
-        lbl(r_hp, "Oto HP  ", fnt=("Arial", 8)).pack(side="left")
-        self._lbl_hp_durum = lbl(r_hp, "Kapali", col=GRAY, fnt=("Arial", 8, "bold"))
-        self._lbl_hp_durum.pack(side="left", padx=4)
-        self._durum_bagla(self._v_hp, self._lbl_hp_durum, "● Acik", "Kapali")
-        self._lbl_hp_tus = lbl(r_hp, f"Tuş: {hp_tus.upper()}", fnt=("Arial", 8))
-        self._lbl_hp_tus.pack(side="right")
-
-        r_wolf = tk.Frame(sf, bg=BG3)
-        r_wolf.pack(fill="x", padx=8, pady=1)
-        lbl(r_wolf, "Oto Wolf  ", fnt=("Arial", 8)).pack(side="left")
-        self._lbl_wolf_durum = lbl(r_wolf, "Kapali", col=GRAY, fnt=("Arial", 8, "bold"))
-        self._lbl_wolf_durum.pack(side="left", padx=4)
-        self._durum_bagla(self._v_wolf, self._lbl_wolf_durum, "● Acik", "Kapali")
-        self._lbl_wolf_tus = lbl(r_wolf, f"Wolf Tuş: {wolf_tus.upper()}", fnt=("Arial", 8))
-        self._lbl_wolf_tus.pack(side="right")
-
-        r_cure = tk.Frame(sf, bg=BG3)
-        r_cure.pack(fill="x", padx=8, pady=1)
-        lbl(r_cure, "Oto Cure  ", fnt=("Arial", 8)).pack(side="left")
-        self._lbl_cure_durum = lbl(r_cure, "Kapali", col=GRAY, fnt=("Arial", 8, "bold"))
-        self._lbl_cure_durum.pack(side="left", padx=4)
-        self._durum_bagla(self._v_cure, self._lbl_cure_durum, "● Acik", "Kapali")
-        self._lbl_cure_tus = lbl(r_cure, f"Cure Tuş: {cure_tus.upper()}", fnt=("Arial", 8))
-        self._lbl_cure_tus.pack(side="right")
-
-        r2 = tk.Frame(sf, bg=BG3)
-        r2.pack(fill="x", padx=8, pady=1)
-        lbl(r2, "Restore [R]  ", fnt=("Arial", 8)).pack(side="left")
-        self._lbl_rs_durum = lbl(r2, "Kapali", col=GRAY, fnt=("Arial", 8, "bold"))
-        self._lbl_rs_durum.pack(side="left", padx=4)
-        self._durum_bagla(self._v_rs, self._lbl_rs_durum, "● R 0.3sn", "Kapali")
-        self._lbl_has = lbl(r2, f"Hassasiyet: %{int(ESLESME_ESIGI * 100)}", fnt=("Arial", 8))
-        self._lbl_has.pack(side="right")
-
-        r3 = tk.Frame(sf, bg=BG3)
-        r3.pack(fill="x", padx=8, pady=1)
-        lbl(r3, "Combo [Space]  ", col=YELLOW, fnt=("Arial", 8)).pack(side="left")
-        self._lbl_combo = lbl(r3, "Kapali", col=GRAY, fnt=("Arial", 8, "bold"))
-        self._lbl_combo.pack(side="left", padx=4)
-        self._durum_bagla(self._v_cb, self._lbl_combo, "● Space 0.30sn", "Kapali")
-        lbl(r3, "Space 0.30sn tut → 3rr → 0.10s → r×11", col=GRAY, fnt=("Arial", 7, "italic")).pack(side="right")
+        sf.pack(fill="x", padx=8, pady=(0, 6))
+        lbl(sf, "Durum ozeti",
+            col=GRAY, fnt=("Arial", 7, "italic")).pack(anchor="w", padx=6, pady=(4, 1))
 
         r4 = tk.Frame(sf, bg=BG3)
-        r4.pack(fill="x", padx=8, pady=1)
+        r4.pack(fill="x", padx=6, pady=0)
         self._lbl_mp = lbl(r4, "MP Pot Durumu : Normal.", fnt=("Arial", 8))
         self._lbl_mp.pack(side="left")
 
         r5 = tk.Frame(sf, bg=BG3)
-        r5.pack(fill="x", padx=8, pady=1)
+        r5.pack(fill="x", padx=6, pady=0)
         self._lbl_hp = lbl(r5, "HP Pot Durumu : Normal.", fnt=("Arial", 8))
         self._lbl_hp.pack(side="left")
 
-        r6 = tk.Frame(sf, bg=BG3)
-        r6.pack(fill="x", padx=8, pady=1)
-        self._lbl_wolf = lbl(r6, "Wolf Durumu : Bekleniyor.", fnt=("Arial", 8))
-        self._lbl_wolf.pack(side="left")
-
-        r6b = tk.Frame(sf, bg=BG3)
-        r6b.pack(fill="x", padx=8, pady=1)
-        n0 = len(_cure_sablonlar)
-        self._lbl_cure = lbl(r6b,
-            f"Cure: {n0} debuff yüklü — önce bölge seçin." if n0 else "Cure: Icon/cure klasörü boş!",
-            fnt=("Arial", 8))
-        self._lbl_cure.pack(side="left")
-
         r7 = tk.Frame(sf, bg=BG3)
-        r7.pack(fill="x", padx=8, pady=(1, 8))
+        r7.pack(fill="x", padx=6, pady=(0, 4))
         self._lbl_rs = lbl(r7, "Restore: Önce bölge seçin, R'yi 0.3 sn basılı tutun.", fnt=("Arial", 8))
         self._lbl_rs.pack(side="left")
 
@@ -1499,10 +1465,10 @@ class App:
         self.win.after(0, lambda: self._lbl_rs.config(text=msg, fg=col))
 
     def _wolf_durum_guncelle(self, msg, col):
-        self.win.after(0, lambda: self._lbl_wolf.config(text=msg, fg=col))
+        pass
 
     def _cure_durum_guncelle(self, msg, col):
-        self.win.after(0, lambda: self._lbl_cure.config(text=msg, fg=col))
+        pass
 
     # ── MP mantığı ─────────────────────────────
     def _mp_sec(self):
@@ -1571,7 +1537,6 @@ class App:
         global wolf_tus
         wolf_tus = tus
         self._row_wolf["ob"].config(text=f"⌨  Tuş: {wolf_tus.upper()}")
-        self._lbl_wolf_tus.config(text=f"Wolf Tuş: {wolf_tus.upper()}")
 
     def _wolf_dosya(self):
         yol = filedialog.askopenfilename(
@@ -1582,7 +1547,6 @@ class App:
             return
         if wolf_sablon_yukle(yol):
             self._row_wolf["sb"].config(text="✓ wolf.png hazır", fg=GREEN)
-            self._lbl_wolf.config(text=f"Yüklendi: {os.path.basename(yol)}", fg=GREEN)
         else:
             messagebox.showerror("Hata", "Dosya okunamadı!", parent=self.win)
 
@@ -1593,7 +1557,6 @@ class App:
             return
         if _wolf_sablon is None:
             self._v_wolf.set(False)
-            self._lbl_wolf.config(text="wolf.png bulunamadı!", fg=RED)
             if messagebox.askokcancel("wolf.png Yok",
                                       f"Aranan: {WOLF_YOL}\n\nDosyayı elle seçmek ister misin?",
                                       parent=self.win):
@@ -1602,7 +1565,6 @@ class App:
         wolf_aktif = True
         _wolf_goruldu = False
         _wolf_gitti_zamani = 0.0
-        self._lbl_wolf.config(text="Wolf: Taranıyor...", fg=GREEN)
 
     # ── Oto Cure mantığı ───────────────────────
     def _cure_bolge_sec(self):
@@ -1617,8 +1579,6 @@ class App:
         if g > 10 and y > 10:
             cure_alani = (s, u, g, y)
             self._btn_cure_bolge.config(text="✓ Bölge", fg=GREEN)
-            self._lbl_cure.config(
-                text=f"Cure bölgesi: {g}x{y} px — debuff gelince {cure_tus.upper()}", fg=CYAN)
         else:
             self._btn_cure_bolge.config(text="Küçük!", fg=RED)
 
@@ -1630,16 +1590,13 @@ class App:
         global cure_tus
         cure_tus = tus
         self._btn_cure_tus.config(text=f"⌨  Tuş: {cure_tus.upper()}")
-        self._lbl_cure_tus.config(text=f"Cure Tuş: {cure_tus.upper()}")
 
     def _cure_yenile(self):
         n = cure_sablonlari_yukle()
         if n:
             self._btn_cure_yenile.config(text=f"✓ {n} debuff", fg=GREEN)
-            self._lbl_cure.config(text=f"Cure: {n} debuff yüklendi ({CURE_KLASOR})", fg=GREEN)
         else:
             self._btn_cure_yenile.config(text="✗ Icon/cure", fg=RED)
-            self._lbl_cure.config(text=f"Cure: Klasör boş veya yok!\n{CURE_KLASOR}", fg=RED)
             messagebox.showwarning(
                 "Cure Şablon Yok",
                 f"Debuff PNG bulunamadı.\n\nKlasör: {CURE_KLASOR}",
@@ -1649,11 +1606,9 @@ class App:
         global cure_aktif
         if not self._v_cure.get():
             cure_aktif = False
-            self._lbl_cure.config(text="Cure Durumu: Kapalı.", fg=CYAN)
             return
         if not _cure_sablonlar:
             self._v_cure.set(False)
-            self._lbl_cure.config(text="Icon/cure boş — önce PNG ekleyin!", fg=RED)
             if messagebox.askokcancel(
                     "Cure Şablon Yok",
                     f"Klasör: {CURE_KLASOR}\n\nYeniden taransın mı?",
@@ -1663,11 +1618,8 @@ class App:
         if not cure_alani:
             self._v_cure.set(False)
             self._btn_cure_bolge.config(text="Önce seç!", fg=RED)
-            self._lbl_cure.config(text="Cure için önce bölge seçin!", fg=RED)
             return
         cure_aktif = True
-        self._lbl_cure.config(
-            text=f"Cure: {len(_cure_sablonlar)} debuff taranıyor → {cure_tus.upper()}", fg=GREEN)
 
     # ── Restore mantığı ────────────────────────
     def _rs_bolge_sec(self):
@@ -1719,7 +1671,6 @@ class App:
         def ok():
             global ESLESME_ESIGI
             ESLESME_ESIGI = round(v.get(), 2)
-            self._lbl_has.config(text=f"Hassasiyet: %{int(ESLESME_ESIGI * 100)}")
             w.destroy()
 
         btn(w, "Onayla", ok, w=10).pack(pady=6)
