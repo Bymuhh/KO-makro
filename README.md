@@ -1,170 +1,75 @@
-# KO Makro (Auto Key)
+# Auto Key (KO Makro)
 
-Knight Online için yardımcı makro: otomatik MP/HP pot, Oto Wolf, Oto Cure (7 debuff), Restore silme ve Combo.
+Knight Online yardımcı makro: Oto MP/HP pot, Wolf, Cure (7 debuff), Restore silme, Combo ve **Floody** (chat flood).
 
-> **Uyarı:** Bu araç kendi riskinizle kullanılır. Oyun kuralları / anti-cheat (Xigncode) riski size aittir. Yönetici yetkisi gerekir.
+> **Uyarı:** Kendi riskinizle kullanın. Anti-cheat / ban riski size aittir. Yönetici yetkisi gerekir.
 
 ---
 
-## Sıfırdan kurulum (Python olmayan yeni bilgisayar)
+## Sıfırdan kurulum (Python olmayan PC)
 
 ### 1) Gerekli olanlar
-
 | Ne | Neden |
 |----|--------|
-| **Windows 10/11 (64-bit)** | Program Windows için yazıldı |
-| **Python 3.10+** | `ko_makro.py` çalıştırır |
-| **pip paketleri** | `mss`, `numpy`, `opencv-python` |
-| **Bu repo dosyaları** | Kod + `Icon` klasörü |
-| **Yönetici yetkisi** | Oyuna tuş göndermek için (UAC) |
-
-İsteğe bağlı: Git (repo klonlamak için). Olmasa da ZIP indirmeyi kullanabilirsiniz.
-
----
+| Windows 10/11 (64-bit) | Program Windows için |
+| Python 3.10+ | `Auto Key.py` çalışır |
+| `pip install mss numpy opencv-python` | Ekran / görüntü |
+| Bu repo + `Icon` klasörü | Kod ve şablonlar |
+| Yönetici yetkisi | Oyuna tuş göndermek için |
 
 ### 2) Python kur
-
-1. https://www.python.org/downloads/ adresinden **Windows installer (64-bit)** indirin.
-2. Kurulumda mutlaka işaretleyin:
-   - **Add python.exe to PATH**
-3. Kurulumu tamamlayın.
-4. Yeni bir **CMD** veya **PowerShell** açıp kontrol edin:
-
-```bat
-python --version
-pip --version
-```
-
-Sürüm görünüyorsa Python hazırdır.
-
----
+1. https://www.python.org/downloads/ → Windows 64-bit
+2. **Add python.exe to PATH** işaretle
+3. Kontrol: `python --version` / `pip --version`
 
 ### 3) Projeyi indir
-
-**Yöntem A – ZIP (en kolay)**
-
-1. Bu sayfada yeşil **Code** → **Download ZIP**
-2. ZIP’i masaüstüne çıkarın (ör. `KO-makro-main`)
-3. Klasörün içinde `ko_makro.py`, `BASLAT.bat` ve `Icon` olmalı
-
-**Yöntem B – Git**
-
+- **Code → Download ZIP** veya:
 ```bat
-cd %USERPROFILE%\Desktop
 git clone https://github.com/Bymuhh/KO-makro.git
 cd KO-makro
 ```
 
----
-
-### 4) Python paketlerini kur
-
-Proje klasöründe CMD/PowerShell açın:
-
+### 4) Paketler
 ```bat
-cd masaüstü\KO-makro-main
 pip install mss numpy opencv-python
 ```
 
-> İlk açılışta program eksik paketleri de sorabilir; yine de önceden kurmak daha sağlıklıdır.
+### 5) Çalıştır
+- `BASLAT.bat` çift tıkla  
+  veya: `python "Auto Key.py"`
+- UAC / yönetici onayı verin
 
----
-
-### 5) Klasör yapısı (bozmayın)
-
+### Klasör yapısı
 ```text
 KO-makro/
-├── ko_makro.py          ← ana program
-├── BASLAT.bat           ← çift tıkla başlat
-├── Icon/
-│   ├── restore.png      ← restore ikonu
-│   ├── wolf.png         ← wolf buff ikonu
-│   └── cure/            ← debuff şablonları
-│       ├── atack.png
-│       ├── malice.png
-│       ├── massive.png
-│       ├── parazit.png
-│       ├── Reserlife.png
-│       ├── superparazit.png
-│       └── tourment.png
-└── README.md
+├── Auto Key.py      ← ana makro
+├── floody.py        ← Floody chat sayfası
+├── BASLAT.bat
+├── BUILD_EXE.bat    ← isteğe bağlı exe derleme
+└── Icon/
+    ├── restore.png
+    ├── wolf.png
+    └── cure/        ← debuff PNG'leri
 ```
-
-`Icon` klasörü `ko_makro.py` ile **aynı dizinde** kalmalıdır.
 
 ---
 
-### 6) Çalıştırma
+## Özellikler
+| Özellik | Tetik |
+|---------|--------|
+| Oto MP / HP | Eşik altı (öncelik MP) |
+| Oto Wolf | Buff kaybolunca |
+| Oto Cure | Seçili bölgede debuff |
+| Restore | **R** 0.3 sn basılı |
+| Combo | **Space** 0.30 sn → 3rr → 0.10s → r×11 |
+| Floody | Üstteki **💬 Floody** butonu |
 
-1. `BASLAT.bat` dosyasına **çift tıklayın**  
-   veya:
+Küçültünce mini panel: **▲** devam, **■** bekleme (sürüklenebilir).
 
+---
+
+## Exe (isteğe bağlı)
 ```bat
-python ko_makro.py
+BUILD_EXE.bat
 ```
-
-2. Windows **Yönetici olarak çalıştır** / UAC onayı isteyebilir → **Evet** deyin.
-3. Knight Online da yönetici modundaysa makro da yönetici olmalıdır; aksi halde tuşlar oyuna gitmeyebilir.
-
----
-
-### 7) İlk kullanım (program içinde)
-
-1. **KO Pencere Seç** → Knight Online penceresini seçin  
-2. **Oto MP / Oto HP**  
-   - Bar Seç → ekranda barı sürükleyerek işaretleyin  
-   - Tuş (1–9, 0) ve eşik % seçin  
-3. **Oto Wolf** → `Icon/wolf.png` otomatik yüklenir; skill tuşunu seçin  
-4. **Oto Cure**  
-   - Bölge Seç → debuff alanını seçin  
-   - Cure skill tuşunu seçin (1–9, 0)  
-5. **Restore [R]**  
-   - Bölge Seç → restore ikonunun olduğu alanı seçin  
-   - Açıkken **R** tuşunu **0.3 sn** basılı tutun → 2 sol tık  
-6. **Combo [Space]**  
-   - Açıkken **Space**’i **0.30 sn** basılı tutun → `3rr` → 0.10s → `r×11` döngüsü  
-
-Küçültünce mini panel açılır: **▲** devam, **■** bekleme. Panele tutup sürükleyebilirsiniz.
-
----
-
-## Özellik özeti
-
-| Özellik | Tetik | Not |
-|---------|-------|-----|
-| Oto MP | Eşik altı | HP ile aynı anda düşükse **önce MP** |
-| Oto HP | Eşik altı | MP basıldıysa aynı turda HP basılmaz |
-| Oto Wolf | Buff kaybolunca | ~3 sn sonra skill tuşu |
-| Oto Cure | Debuff görününce | Sadece seçili bölge taranır |
-| Restore | R 0.3 sn basılı | Seçili bölgede ikon bul → 2 sol tık |
-| Combo | Space 0.30 sn | Basılı kaldığı sürece tekrarlar |
-
----
-
-## Sık sorunlar
-
-| Sorun | Çözüm |
-|-------|--------|
-| `python` bulunamadı | Python’u PATH ile yeniden kurun; terminali kapatıp açın |
-| `No module named mss/cv2/numpy` | `pip install mss numpy opencv-python` |
-| Tuşlar oyuna gitmiyor | Makroyu **Yönetici** çalıştırın; KO penceresini seçin |
-| Restore / Cure bulamıyor | Bölgeyi yeniden seçin; `Icon` dosyalarının yerinde olduğundan emin olun |
-| Cure şablon yok | `Icon/cure/*.png` dosyalarını kontrol edin |
-
----
-
-## Gereksinimler (kısa)
-
-```bat
-pip install mss numpy opencv-python
-```
-
-- Python 3.10+ (Windows)
-- Yönetici yetkisi
-- `Icon` klasörü (restore / wolf / cure)
-
----
-
-## Lisans / sorumluluk
-
-Kişisel kullanım içindir. Oyun hesabı / ban riski kullanıcıya aittir.
+Çıktı: `Auto Key.exe` — `Icon` klasörü yanında kalsın.

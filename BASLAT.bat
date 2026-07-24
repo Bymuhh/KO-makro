@@ -1,16 +1,7 @@
 @echo off
 chcp 65001 >nul
-title KO Makro
-cd /d "%~dp0"
-
-where python >nul 2>&1
-if errorlevel 1 (
-    echo Python bulunamadi. Once Python kurun veya PATH'e ekleyin.
-    pause
-    exit /b 1
-)
-
-python "ko_makro.py"
+title Auto Key
+"C:\Users\Bymuhh\AppData\Local\Python\pythoncore-3.14-64\python.exe" "C:\Users\Bymuhh\Desktop\Auto Key\Auto Key.py"
 if errorlevel 1 (
     echo.
     echo HATA! Yukardaki mesaji kopyalayip ilet.

@@ -1,5 +1,5 @@
 """
-KO Makro - Knight Online Makro Asistani
+Auto Key - Knight Online Makro Asistani
 Gereksinimler: pip install mss numpy opencv-python
 """
 import sys
@@ -57,7 +57,7 @@ if not getattr(sys, "frozen", False):
             _f.write(
                 "@echo off\n"
                 "chcp 65001 >nul\n"
-                "title KO Makro\n"
+                "title Auto Key\n"
                 f'"{_py_yolu}" "{_script_yolu}"\n'
                 "if errorlevel 1 (\n"
                 "    echo.\n"
@@ -316,13 +316,15 @@ ko_bul_otomatik()
 # ══════════════════════════════════════════════
 mana_alani = None
 mana_aktif = False
-mana_esik  = 30
-mana_tus   = "1"
+mana_esik  = 50
+mana_tus   = "4"
+mana_bekle_ms = 155
 
 hp_alani = None
 hp_aktif = False
-hp_esik  = 30
-hp_tus   = "2"
+hp_esik  = 50
+hp_tus   = "1"
+hp_bekle_ms = 155
 
 wolf_aktif = False
 wolf_tus   = "3"
@@ -340,7 +342,7 @@ _cure_sablonlar = []   # [(ad, img), ...]
 _cure_son_basma = 0.0
 _cure_durum_fn = None
 
-POT_BEKLE = 0.3
+POT_BEKLE = 0.155
 RESTORE_BEKLE = 0.3
 
 restore_aktif   = False
@@ -765,14 +767,14 @@ def pot_dongusu():
                 if y < mana_esik:
                     giris.press(mana_tus, odak_zorla=True)
                     print(f"[MP] Pot ({mana_tus}) %{y:.1f}")
-                    time.sleep(POT_BEKLE)
+                    time.sleep(max(0.05, mana_bekle_ms / 1000.0))
                     mp_basildi = True
             if not mp_basildi and hp_aktif and hp_alani:
                 y = hp_oku()
                 if y < hp_esik:
                     giris.press(hp_tus, odak_zorla=True)
                     print(f"[HP] Pot ({hp_tus}) %{y:.1f}")
-                    time.sleep(POT_BEKLE)
+                    time.sleep(max(0.05, hp_bekle_ms / 1000.0))
             if restore_aktif:
                 _restore_kontrol()
             if cure_aktif:
@@ -793,6 +795,8 @@ CYAN    = "#00d4e8"
 CDIM    = "#007788"
 YELLOW  = "#f0c000"
 RED     = "#cc2200"
+ORANGE  = "#ff8c00"
+BLUE    = "#3b82f6"
 WHITE   = "#e8e8f0"
 GRAY    = "#555570"
 GREEN   = "#00cc66"
@@ -873,12 +877,13 @@ def sep(p):
 #  ANA PENCERE
 # ══════════════════════════════════════════════
 class App:
-    ANA_GEOM = "500x680"
+    ANA_GEOM = "720x820"
+    FLOODY_GEOM = "720x820"  # makro ile aynı — geçişte boyut değişmesin
     MINI_GEOM = "128x36"   # yaklasik 3cm x 1cm (tutamak + tuslar)
 
     def __init__(self):
         self.win = tk.Tk()
-        self.win.title("KO Makro")
+        self.win.title("Auto Key")
         self.win.geometry(self.ANA_GEOM)
         self.win.resizable(False, False)
         self.win.config(bg=BG)
@@ -892,14 +897,25 @@ class App:
         self._drag_y = 0
         self._win_x = 0
         self._win_y = 0
+        self._sayfa = "makro"  # makro | floody
+        self._floody_page = None
 
         self._ana = tk.Frame(self.win, bg=BG)
         self._ana.pack(fill="both", expand=True)
+
+        # Ortak üst bar
         self._build_topbar()
         sep(self._ana)
-        self._build_satirlar()
-        sep(self._ana)
-        self._build_status()
+
+        # Sayfa kapsayıcı
+        self._pages = tk.Frame(self._ana, bg=BG)
+        self._pages.pack(fill="both", expand=True)
+
+        self._makro_page = tk.Frame(self._pages, bg=BG)
+        self._makro_page.pack(fill="both", expand=True)
+        self._build_satirlar(parent=self._makro_page)
+        sep(self._makro_page)
+        self._build_status(parent=self._makro_page)
 
         self._mini = tk.Frame(self.win, bg=BG)
         self._build_mini()
@@ -1063,10 +1079,13 @@ class App:
             self._mini.pack_forget()
             self._ana.pack(fill="both", expand=True)
             self.win.resizable(False, False)
-            self.win.geometry(self.ANA_GEOM)
+            geom = self.FLOODY_GEOM if self._sayfa == "floody" else self.ANA_GEOM
+            self.win.geometry(geom)
             self.win.attributes("-topmost", self._v_ustte.get())
             self.win.deiconify()
             self.win.lift()
+            if self._sayfa == "floody" and self._floody_page is not None:
+                self._floody_page.on_show()
         finally:
             self._buyultuyor = False
 
@@ -1079,6 +1098,8 @@ class App:
                cmd=lambda: self.win.attributes("-topmost", self._v_ustte.get())).pack(side="left")
         lbl(f, " Üstte", col=WHITE).pack(side="left", padx=(4, 8))
         btn(f, "🎮 KO Pencere Seç", self._pencere_sec, col=YELLOW, w=16).pack(side="left", padx=4)
+        self._btn_floody = btn(f, "💬 Floody", self._floody_ac, col=CYAN, w=10)
+        self._btn_floody.pack(side="left", padx=4)
         self._lbl_pencere = lbl(f, "Pencere: Seçilmedi", col=RED, fnt=("Arial", 7))
         self._lbl_pencere.pack(side="left", padx=4)
         if _ko_hwnd:
@@ -1086,38 +1107,73 @@ class App:
             ctypes.windll.user32.GetWindowTextW(_ko_hwnd, buf, 256)
             self._lbl_pencere.config(text=f"✓ {buf.value[:20]}", fg=GREEN)
 
+    def _floody_ac(self):
+        if self._sayfa == "floody":
+            self._sayfa_makro()
+        else:
+            self._sayfa_floody()
+
+    def _sayfa_floody(self):
+        if self._mini_mod:
+            return
+        try:
+            from floody import FloodyPage
+        except Exception as e:
+            messagebox.showerror("Floody", f"Açılamadı:\n{e}", parent=self.win)
+            return
+        self._makro_page.pack_forget()
+        if self._floody_page is None:
+            self._floody_page = FloodyPage(
+                self._pages, self, on_back=self._sayfa_makro)
+        self._floody_page.pack(fill="both", expand=True)
+        self._floody_page.on_show()
+        self._sayfa = "floody"
+        self.win.title("Auto Key — Floody")
+        self._btn_floody.config(text="← Makro", fg=YELLOW)
+
+    def _sayfa_makro(self):
+        if self._floody_page is not None:
+            try:
+                self._floody_page.on_hide()
+                self._floody_page.pack_forget()
+            except tk.TclError:
+                pass
+        self._makro_page.pack(fill="both", expand=True)
+        self._sayfa = "makro"
+        self.win.title("Auto Key")
+        try:
+            self._btn_floody.config(text="💬 Floody", fg=CYAN)
+        except tk.TclError:
+            pass
+
     # ── Satırlar ───────────────────────────────
-    def _build_satirlar(self):
-        f = tk.Frame(self._ana, bg=BG)
-        f.pack(fill="x", padx=14, pady=4)
+    def _build_satirlar(self, parent=None):
+        f = tk.Frame(parent or self._ana, bg=BG)
+        f.pack(fill="x", padx=10, pady=2)
 
-        # Oto MP
-        self._v_mp = tk.BooleanVar(value=False)
-        row_mp = tk.Frame(f, bg=BG)
-        row_mp.pack(fill="x", pady=3)
-        Toggle(row_mp, self._v_mp, cmd=self._mp_toggle).pack(side="left")
-        lbl(row_mp, "  Oto MP", col=WHITE, fnt=("Arial", 9, "bold")).pack(side="left")
-        self._btn_mp_esik = btn(row_mp, f"Eşik: %{mana_esik}", self._mp_esik, col=RED, w=10)
-        self._btn_mp_esik.pack(side="right", padx=(4, 0))
-        self._btn_mp_bar = btn(row_mp, "MP Bar Seç", self._mp_sec, col=CYAN, w=11)
-        self._btn_mp_bar.pack(side="right", padx=4)
-        self._btn_mp_tus = btn(row_mp, f"⌨  Tuş: {mana_tus.upper()}", self._mp_tus_sec, col=CYAN, w=12)
-        self._btn_mp_tus.pack(side="right", padx=4)
-        self._row_mp = {"ob": self._btn_mp_tus, "sb": self._btn_mp_bar, "esik": self._btn_mp_esik}
-
-        # Oto HP
+        # HP kart (kırmızı) — görseldeki gibi üstte
         self._v_hp = tk.BooleanVar(value=False)
-        row_hp = tk.Frame(f, bg=BG)
-        row_hp.pack(fill="x", pady=3)
-        Toggle(row_hp, self._v_hp, cmd=self._hp_toggle).pack(side="left")
-        lbl(row_hp, "  Oto HP", col=WHITE, fnt=("Arial", 9, "bold")).pack(side="left")
-        self._btn_hp_esik = btn(row_hp, f"Eşik: %{hp_esik}", self._hp_esik, col=RED, w=10)
-        self._btn_hp_esik.pack(side="right", padx=(4, 0))
-        self._btn_hp_bar = btn(row_hp, "HP Bar Seç", self._hp_sec, col=CYAN, w=11)
-        self._btn_hp_bar.pack(side="right", padx=4)
-        self._btn_hp_tus = btn(row_hp, f"⌨  Tuş: {hp_tus.upper()}", self._hp_tus_sec, col=CYAN, w=12)
-        self._btn_hp_tus.pack(side="right", padx=4)
+        self._hp_ui = self._build_pot_kart(
+            f, kind="hp", title="HP Bar (Kırmızı)", accent=RED, pct_col=ORANGE,
+            var=self._v_hp, toggle_cmd=self._hp_toggle,
+            bolge_cmd=self._hp_sec, esik=hp_esik, tus=hp_tus, bekle=hp_bekle_ms)
+
+        # MP kart (mavi)
+        self._v_mp = tk.BooleanVar(value=False)
+        self._mp_ui = self._build_pot_kart(
+            f, kind="mp", title="MP Bar (Mavi)", accent=BLUE, pct_col=GREEN,
+            var=self._v_mp, toggle_cmd=self._mp_toggle,
+            bolge_cmd=self._mp_sec, esik=mana_esik, tus=mana_tus, bekle=mana_bekle_ms)
+
+        # geriye uyumluluk (eski referanslar)
+        self._btn_hp_bar = self._hp_ui["btn_bolge"]
+        self._btn_mp_bar = self._mp_ui["btn_bolge"]
+        self._btn_hp_tus = self._hp_ui["ent_tus"]
+        self._btn_mp_tus = self._mp_ui["ent_tus"]
+        self._btn_hp_esik = self._hp_ui["ent_esik"]
+        self._btn_mp_esik = self._mp_ui["ent_esik"]
         self._row_hp = {"ob": self._btn_hp_tus, "sb": self._btn_hp_bar, "esik": self._btn_hp_esik}
+        self._row_mp = {"ob": self._btn_mp_tus, "sb": self._btn_mp_bar, "esik": self._btn_mp_esik}
 
         # Oto Wolf
         self._v_wolf = tk.BooleanVar(value=False)
@@ -1168,6 +1224,161 @@ class App:
                                    "Space 0.30sn tut", None,
                                    "Aktif", None, YELLOW, orta_renk=YELLOW)
 
+    def _build_pot_kart(self, parent, kind, title, accent, pct_col, var, toggle_cmd,
+                        bolge_cmd, esik, tus, bekle):
+        """HP/MP recovery kartı — görseldeki layout, Toggle switch korunur."""
+        card = tk.LabelFrame(
+            parent, text=f"  {title}  ", bg=BG2, fg=accent,
+            font=("Arial", 9, "bold"), bd=1, relief="solid", labelanchor="nw")
+        card.pack(fill="x", pady=(4, 6), padx=2)
+
+        # satır 1: switch + bölge + coords + %
+        r1 = tk.Frame(card, bg=BG2)
+        r1.pack(fill="x", padx=8, pady=(6, 2))
+        Toggle(r1, var, cmd=toggle_cmd).pack(side="left")
+        lbl(r1, " Aktif", col=WHITE, fnt=("Arial", 8)).pack(side="left", padx=(2, 8))
+        btn_bolge = tk.Button(
+            r1, text="📍 Bölge Seç", command=bolge_cmd,
+            bg=accent, fg=WHITE, activebackground=accent, activeforeground=WHITE,
+            relief="flat", font=("Arial", 8, "bold"), cursor="hand2", padx=8)
+        btn_bolge.pack(side="left")
+        lbl_coords = lbl(r1, "Bölge seçilmedi", col=GRAY, fnt=("Arial", 7))
+        lbl_coords.pack(side="left", padx=8)
+        lbl_pct = lbl(r1, "—", col=pct_col, fnt=("Arial", 14, "bold"))
+        lbl_pct.pack(side="right")
+
+        # satır 2: progress bar
+        bar_frame = tk.Frame(card, bg=BG2)
+        bar_frame.pack(fill="x", padx=8, pady=(2, 4))
+        bar = tk.Canvas(bar_frame, height=14, bg="#1a1a28", highlightthickness=0)
+        bar.pack(fill="x")
+        bar_bg = bar.create_rectangle(0, 0, 10, 14, fill="#2a2a3a", outline="")
+        bar_fill = bar.create_rectangle(0, 0, 0, 14, fill=accent, outline="")
+
+        def _bar_resize(_e=None):
+            w = max(bar.winfo_width(), 10)
+            bar.coords(bar_bg, 0, 0, w, 14)
+            pct = getattr(bar, "_pct", 0.0)
+            bar.coords(bar_fill, 0, 0, int(w * pct / 100.0), 14)
+
+        bar.bind("<Configure>", _bar_resize)
+        bar._pct = 0.0
+
+        # satır 3: eşik preset + manuel
+        r3 = tk.Frame(card, bg=BG2)
+        r3.pack(fill="x", padx=8, pady=2)
+        lbl(r3, "Eşik:", col=GRAY, fnt=("Arial", 8)).pack(side="left")
+        esik_var = tk.StringVar(value=str(int(esik)))
+        for p in (25, 50, 75, 100):
+            tk.Button(
+                r3, text=f"%{p}", width=4,
+                bg=BG3, fg=WHITE, relief="flat", font=("Arial", 8),
+                cursor="hand2",
+                command=lambda v=p, ev=esik_var: ev.set(str(v))
+            ).pack(side="left", padx=2)
+        lbl(r3, "veya:", col=GRAY, fnt=("Arial", 8)).pack(side="left", padx=(8, 2))
+        ent_esik = tk.Entry(
+            r3, textvariable=esik_var, width=4, bg=BG3, fg=WHITE,
+            insertbackground=WHITE, relief="flat", font=("Arial", 9), justify="center")
+        ent_esik.pack(side="left")
+        lbl(r3, "%", col=GRAY, fnt=("Arial", 8)).pack(side="left", padx=2)
+
+        # satır 4: tuş + bekleme + kaydet
+        r4 = tk.Frame(card, bg=BG2)
+        r4.pack(fill="x", padx=8, pady=(2, 8))
+        lbl(r4, "Tuş:", col=GRAY, fnt=("Arial", 8)).pack(side="left")
+        tus_var = tk.StringVar(value=str(tus))
+        ent_tus = tk.Entry(
+            r4, textvariable=tus_var, width=3, bg=BG3, fg=WHITE,
+            insertbackground=WHITE, relief="flat", font=("Arial", 9), justify="center")
+        ent_tus.pack(side="left", padx=(2, 10))
+        lbl(r4, "Bekleme (ms):", col=GRAY, fnt=("Arial", 8)).pack(side="left")
+        bekle_var = tk.StringVar(value=str(int(bekle)))
+        ent_bekle = tk.Entry(
+            r4, textvariable=bekle_var, width=5, bg=BG3, fg=WHITE,
+            insertbackground=WHITE, relief="flat", font=("Arial", 9), justify="center")
+        ent_bekle.pack(side="left", padx=(2, 10))
+
+        def kaydet(_kind=kind, _ev=esik_var, _tv=tus_var, _bv=bekle_var):
+            self._pot_kaydet(_kind, _ev, _tv, _bv)
+
+        btn_kaydet = tk.Button(
+            r4, text="💾 Kaydet", command=kaydet,
+            bg=BG3, fg=WHITE, relief="flat", font=("Arial", 8, "bold"),
+            cursor="hand2", padx=8)
+        btn_kaydet.pack(side="right")
+
+        return {
+            "kind": kind,
+            "card": card,
+            "var": var,
+            "btn_bolge": btn_bolge,
+            "lbl_coords": lbl_coords,
+            "lbl_pct": lbl_pct,
+            "bar": bar,
+            "bar_fill": bar_fill,
+            "bar_bg": bar_bg,
+            "accent": accent,
+            "pct_col": pct_col,
+            "esik_var": esik_var,
+            "ent_esik": ent_esik,
+            "tus_var": tus_var,
+            "ent_tus": ent_tus,
+            "bekle_var": bekle_var,
+            "ent_bekle": ent_bekle,
+            "btn_kaydet": btn_kaydet,
+        }
+
+    def _pot_kaydet(self, kind, esik_var, tus_var, bekle_var):
+        global mana_esik, mana_tus, mana_bekle_ms, hp_esik, hp_tus, hp_bekle_ms
+        try:
+            e = int(str(esik_var.get()).strip())
+            e = max(1, min(100, e))
+        except (tk.TclError, ValueError):
+            e = 50
+        esik_var.set(str(e))
+        t = str(tus_var.get()).strip().lower() or "1"
+        tus_var.set(t)
+        try:
+            b = int(str(bekle_var.get()).strip())
+            b = max(50, min(5000, b))
+        except (tk.TclError, ValueError):
+            b = 155
+        bekle_var.set(str(b))
+        if kind == "mp":
+            mana_esik, mana_tus, mana_bekle_ms = e, t, b
+            try:
+                self._lbl_mp_tus.config(text=f"Tuş: {mana_tus.upper()}")
+            except Exception:
+                pass
+            ui = self._mp_ui
+        else:
+            hp_esik, hp_tus, hp_bekle_ms = e, t, b
+            try:
+                self._lbl_hp_tus.config(text=f"Tuş: {hp_tus.upper()}")
+            except Exception:
+                pass
+            ui = self._hp_ui
+        ui["btn_kaydet"].config(text="✓ Kaydedildi", fg=GREEN)
+        self.win.after(1200, lambda: ui["btn_kaydet"].config(text="💾 Kaydet", fg=WHITE))
+
+    def _pot_bar_guncelle(self, ui, pct):
+        pct = max(0.0, min(100.0, float(pct)))
+        ui["lbl_pct"].config(text=f"{pct:.1f}%")
+        bar = ui["bar"]
+        bar._pct = pct
+        w = max(bar.winfo_width(), 10)
+        bar.coords(ui["bar_bg"], 0, 0, w, 14)
+        bar.coords(ui["bar_fill"], 0, 0, int(w * pct / 100.0), 14)
+
+    def _pot_coords_yaz(self, ui, alani):
+        if not alani:
+            ui["lbl_coords"].config(text="Bölge seçilmedi", fg=GRAY)
+            return
+        s, u, g, y = alani
+        ui["lbl_coords"].config(
+            text=f"({s}, {u}) → ({s + g}, {u + y})", fg=GRAY)
+
     def _satir(self, parent, label, var, vcmd, orta_t, orta_c, sag_t, sag_c, sag_col, orta_renk=CYAN):
         row = tk.Frame(parent, bg=BG)
         row.pack(fill="x", pady=3)
@@ -1197,8 +1408,8 @@ class App:
         var.trace_add("write", upd)
         upd()
 
-    def _build_status(self):
-        sf = tk.Frame(self._ana, bg=BG3)
+    def _build_status(self, parent=None):
+        sf = tk.Frame(parent or self._ana, bg=BG3)
         sf.pack(fill="x", padx=10, pady=(0, 10))
         lbl(sf, "Durum ozeti (ana satirdaki anahtarlardan kontrol edilir)",
             col=GRAY, fnt=("Arial", 7, "italic")).pack(anchor="w", padx=8, pady=(6, 2))
@@ -1303,43 +1514,11 @@ class App:
         s, u, g, y = veri
         if g > 5 and y > 2:
             mana_alani = (s, u, g, y)
-            self._btn_mp_bar.config(text="✓ Seçildi", fg=GREEN)
+            self._pot_coords_yaz(self._mp_ui, mana_alani)
+            self._mp_ui["btn_bolge"].config(text="✓ Bölge Seçili")
         else:
-            self._btn_mp_bar.config(text="Küçük!", fg=RED)
-
-    def _mp_tus_sec(self):
-        self._tus_sec_dialog("MP Pot Tuşunu Seç:", mana_tus,
-                             lambda t: self._mp_tus_atandi(t))
-
-    def _mp_tus_atandi(self, tus):
-        global mana_tus
-        mana_tus = tus
-        self._btn_mp_tus.config(text=f"⌨  Tuş: {mana_tus.upper()}")
-        self._lbl_mp_tus.config(text=f"Tuş: {mana_tus.upper()}")
-
-    def _mp_esik(self):
-        w = tk.Toplevel(self.win)
-        w.title("MP Eşik")
-        w.geometry("260x130")
-        w.config(bg=BG)
-        w.attributes("-topmost", True)
-        lbl(w, "Pot basma eşiği (MP %):").pack(pady=8)
-        v = tk.IntVar(value=mana_esik)
-        lv = lbl(w, f"%{mana_esik}", col=YELLOW)
-        lv.pack()
-        tk.Scale(w, from_=5, to=95, resolution=1, orient="horizontal",
-                 variable=v, bg=BG, fg=YELLOW, troughcolor=BG2,
-                 highlightthickness=0, sliderrelief="flat", showvalue=False,
-                 command=lambda x: lv.config(text=f"%{int(float(x))}")
-                 ).pack(fill="x", padx=16)
-
-        def ok():
-            global mana_esik
-            mana_esik = v.get()
-            self._btn_mp_esik.config(text=f"Eşik: %{mana_esik}")
-            w.destroy()
-
-        btn(w, "Onayla", ok, w=10).pack(pady=6)
+            self._mp_ui["btn_bolge"].config(text="📍 Bölge Seç")
+            self._mp_ui["lbl_coords"].config(text="Bölge çok küçük!", fg=RED)
 
     def _mp_toggle(self):
         global mana_aktif
@@ -1348,8 +1527,10 @@ class App:
             return
         if not mana_alani:
             self._v_mp.set(False)
-            self._btn_mp_bar.config(text="Önce seç!", fg=RED)
+            self._mp_ui["btn_bolge"].config(text="📍 Önce seç!")
             return
+        self._pot_kaydet("mp", self._mp_ui["esik_var"],
+                         self._mp_ui["tus_var"], self._mp_ui["bekle_var"])
         mana_aktif = True
 
     # ── HP mantığı ─────────────────────────────
@@ -1362,43 +1543,11 @@ class App:
         s, u, g, y = veri
         if g > 5 and y > 2:
             hp_alani = (s, u, g, y)
-            self._btn_hp_bar.config(text="✓ Seçildi", fg=GREEN)
+            self._pot_coords_yaz(self._hp_ui, hp_alani)
+            self._hp_ui["btn_bolge"].config(text="✓ Bölge Seçili")
         else:
-            self._btn_hp_bar.config(text="Küçük!", fg=RED)
-
-    def _hp_tus_sec(self):
-        self._tus_sec_dialog("HP Pot Tuşunu Seç:", hp_tus,
-                             lambda t: self._hp_tus_atandi(t))
-
-    def _hp_tus_atandi(self, tus):
-        global hp_tus
-        hp_tus = tus
-        self._btn_hp_tus.config(text=f"⌨  Tuş: {hp_tus.upper()}")
-        self._lbl_hp_tus.config(text=f"Tuş: {hp_tus.upper()}")
-
-    def _hp_esik(self):
-        w = tk.Toplevel(self.win)
-        w.title("HP Eşik")
-        w.geometry("260x130")
-        w.config(bg=BG)
-        w.attributes("-topmost", True)
-        lbl(w, "Pot basma eşiği (HP %):").pack(pady=8)
-        v = tk.IntVar(value=hp_esik)
-        lv = lbl(w, f"%{hp_esik}", col=YELLOW)
-        lv.pack()
-        tk.Scale(w, from_=5, to=95, resolution=1, orient="horizontal",
-                 variable=v, bg=BG, fg=YELLOW, troughcolor=BG2,
-                 highlightthickness=0, sliderrelief="flat", showvalue=False,
-                 command=lambda x: lv.config(text=f"%{int(float(x))}")
-                 ).pack(fill="x", padx=16)
-
-        def ok():
-            global hp_esik
-            hp_esik = v.get()
-            self._btn_hp_esik.config(text=f"Eşik: %{hp_esik}")
-            w.destroy()
-
-        btn(w, "Onayla", ok, w=10).pack(pady=6)
+            self._hp_ui["btn_bolge"].config(text="📍 Bölge Seç")
+            self._hp_ui["lbl_coords"].config(text="Bölge çok küçük!", fg=RED)
 
     def _hp_toggle(self):
         global hp_aktif
@@ -1407,8 +1556,10 @@ class App:
             return
         if not hp_alani:
             self._v_hp.set(False)
-            self._btn_hp_bar.config(text="Önce seç!", fg=RED)
+            self._hp_ui["btn_bolge"].config(text="📍 Önce seç!")
             return
+        self._pot_kaydet("hp", self._hp_ui["esik_var"],
+                         self._hp_ui["tus_var"], self._hp_ui["bekle_var"])
         hp_aktif = True
 
     # ── Wolf mantığı ───────────────────────────
@@ -1669,12 +1820,14 @@ class App:
         if not self._mini_mod:
             if mana_alani:
                 y = mana_oku()
+                self._pot_bar_guncelle(self._mp_ui, y)
                 if y < mana_esik:
                     self._lbl_mp.config(text=f"MP: %{y:.0f} — Pot basılıyor!", fg=RED)
                 else:
                     self._lbl_mp.config(text=f"MP: %{y:.0f} — Normal.", fg=CYAN)
             if hp_alani:
                 y = hp_oku()
+                self._pot_bar_guncelle(self._hp_ui, y)
                 if y < hp_esik:
                     self._lbl_hp.config(text=f"HP: %{y:.0f} — Pot basılıyor!", fg=RED)
                 else:
